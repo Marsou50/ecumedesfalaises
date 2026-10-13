@@ -42,7 +42,7 @@ export function Announcement() {
 
 /* ============ Navbar ============ */
 const LINKS = [
-  { label: "La Maison", href: "#maison" },
+  { label: "La brasserie", href: "#maison" },
   { label: "Coffrets", href: "#coffrets" },
   { label: "Savoir-faire", href: "#savoir-faire" },
   { label: "Avis", href: "#avis" },
