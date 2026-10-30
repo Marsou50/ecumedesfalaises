@@ -1,54 +1,127 @@
-import { useCallback, useRef, useState } from "react";
-import { Announcement, Navbar, Footer, Toast, FloatingActions } from "./components/chrome";
-import { Hero, SocialProof, Features, Showcase } from "./components/sections-top";
-import { Benefits, Testimonials, Pricing, FAQ, FinalCTA } from "./components/sections-bottom";
+import { useCallback, useMemo, useState } from "react";
+import { AppProvider, useApp } from "./lib/store";
+import { AppBar, Footer, TabBar, Toast, type Tab } from "./components/chrome";
+import { Landing } from "./components/Landing";
+import { Results } from "./components/Results";
+import { Journal } from "./components/Journal";
+import { Comprendre } from "./components/Comprendre";
+import { ScanSheet } from "./components/ScanSheet";
+import { ProfileSheet } from "./components/ProfileSheet";
+import { EngineSheet } from "./components/EngineSheet";
+import { ENGINE_LABELS } from "./lib/recognition";
 
-export default function App() {
-  const [cartCount, setCartCount] = useState(0);
-  const [toast, setToast] = useState<string | null>(null);
-  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+function Shell() {
+  const { state, now, loadDemo, lastAdded } = useApp();
+  const [tab, setTab] = useState<Tab>("soir");
+  const [scanOpen, setScanOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
+  const [engineOpen, setEngineOpen] = useState(false);
 
-  const handleAdd = useCallback((label: string, count = 1) => {
-    setCartCount((c) => c + count);
-    setToast(label);
-    if (timer.current) clearTimeout(timer.current);
-    timer.current = setTimeout(() => setToast(null), 2600);
+  const hasProfile = Boolean(state.profile);
+
+  const openScan = useCallback(() => {
+    if (!hasProfile) {
+      setProfileOpen(true);
+      return;
+    }
+    setScanOpen(true);
+  }, [hasProfile]);
+
+  const startApp = useCallback(() => {
+    setProfileOpen(true);
   }, []);
 
-  const handleCart = useCallback(() => {
-    setToast(
-      cartCount === 0
-        ? "Votre panier est vide — laissez-vous tenter par la marée de jeudi"
-        : `${cartCount} article${cartCount > 1 ? "s" : ""} dans votre panier · -15% appliqué`
-    );
-    if (timer.current) clearTimeout(timer.current);
-    timer.current = setTimeout(() => setToast(null), 2600);
-  }, [cartCount]);
+  const onDemo = useCallback(() => {
+    loadDemo();
+    setTab("soir");
+  }, [loadDemo]);
+
+  const [toast, setToast] = useState<string | null>(null);
+  const [toastTone, setToastTone] = useState<"ok" | "warn">("ok");
+
+  const showToast = useCallback((msg: string, tone: "ok" | "warn" = "ok") => {
+    setToast(msg);
+    setToastTone(tone);
+    window.setTimeout(() => setToast(null), 3000);
+  }, []);
+
+  const addedToast = useMemo(
+    () => (lastAdded ? `${lastAdded.name} ajouté${lastAdded.count > 1 ? ` · ${lastAdded.count}ᵉ verre` : " au journal"}` : null),
+    [lastAdded]
+  );
+
+  // routing minimaliste : onboarding → profil
+  const showLanding = !state.onboarded && !hasProfile;
 
   return (
     <div className="min-h-screen bg-ivory font-sans text-marine-950 antialiased">
-      <a
-        href="#coffrets"
-        className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[100] focus:rounded-full focus:bg-marine-950 focus:px-5 focus:py-2.5 focus:text-sm focus:font-bold focus:text-white"
-      >
-        Aller directement à la commande
-      </a>
-      <Announcement />
-      <Navbar cartCount={cartCount} onCart={handleCart} />
-      <main>
-        <Hero onAdd={handleAdd} />
-        <SocialProof />
-        <Features />
-        <Showcase onAdd={handleAdd} />
-        <Benefits />
-        <Testimonials />
-        <Pricing onAdd={handleAdd} />
-        <FAQ />
-        <FinalCTA onAdd={handleAdd} />
-      </main>
-      <Footer />
-      <Toast message={toast} />
-      <FloatingActions cartCount={cartCount} />
+      {showLanding ? (
+        <Landing
+          onEngine={() => setEngineOpen(true)}
+          engineLabel={ENGINE_LABELS[state.engine.engine]}
+          onStart={startApp}
+          onDemo={() => {
+            onDemo();
+            showToast("Soirée de démonstration chargée");
+          }}
+        />
+      ) : (
+        <>
+          <AppBar
+            tab={tab}
+            onTab={setTab}
+            onScan={openScan}
+            onProfile={() => setProfileOpen(true)}
+            onEngine={() => setEngineOpen(true)}
+            profile={state.profile}
+          />
+
+          <main className="mx-auto max-w-5xl px-4 pb-8 pt-4 sm:px-6 sm:pt-6">
+            {tab === "soir" && (
+              <Results
+                session={state.session}
+                profile={state.profile}
+                now={now}
+                onScan={openScan}
+                onOpenProfile={() => setProfileOpen(true)}
+                onDemo={onDemo}
+              />
+            )}
+            {tab === "journal" && (
+              <Journal
+                profile={state.profile}
+                now={now}
+                onScan={openScan}
+                onDashboard={() => setTab("soir")}
+              />
+            )}
+            {tab === "comprendre" && <Comprendre profile={state.profile} />}
+          </main>
+
+          <Footer />
+          <TabBar tab={tab} onTab={setTab} onScan={openScan} />
+        </>
+      )}
+
+      <ScanSheet open={scanOpen} onClose={() => setScanOpen(false)} />
+
+      <ProfileSheet
+        open={profileOpen}
+        onboard={!hasProfile}
+        onClose={() => setProfileOpen(false)}
+      />
+
+      <EngineSheet open={engineOpen} onClose={() => setEngineOpen(false)} />
+
+      <Toast message={toast ?? addedToast} tone={toastTone} />
     </div>
+  );
+}
+
+export default function App() {
+  return (
+    <AppProvider>
+      <Shell />
+    </AppProvider>
   );
 }
