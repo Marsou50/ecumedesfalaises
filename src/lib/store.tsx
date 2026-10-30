@@ -24,10 +24,17 @@ export type StoredState = {
   history: Session[];
   onboarded: boolean;
   engine: EngineConfig;
+  /** version du schéma stocké : sert aux migrations silencieuses */
+  version: number;
 };
 
+/** Version courante : 3 = moteur TensorFlow.js par défaut. */
+export const STORAGE_VERSION = 3;
+
 export const DEFAULT_ENGINE: EngineConfig = {
-  engine: "heuristique",
+  // TensorFlow.js tourne sur l'appareil : aucun compte, aucune clé,
+  // aucune photo transmise. C'est le moteur recommandé par défaut.
+  engine: "tensorflow",
   api: {
     provider: "gemini",
     apiKey: "",
@@ -62,19 +69,37 @@ function load(): StoredState {
     if (raw) {
       const parsed = JSON.parse(raw) as StoredState;
       if (parsed && parsed.session) {
+        const storedVersion = Number(parsed.version ?? 0);
+        const engine = {
+          ...DEFAULT_ENGINE,
+          ...(parsed.engine ?? {}),
+          api: { ...DEFAULT_ENGINE.api, ...(parsed.engine?.api ?? {}) },
+        };
         return {
           profile: parsed.profile ?? null,
           session: { ...parsed.session, events: parsed.session.events ?? [] },
           history: parsed.history ?? [],
           onboarded: Boolean(parsed.onboarded),
-          engine: { ...DEFAULT_ENGINE, ...(parsed.engine ?? {}), api: { ...DEFAULT_ENGINE.api, ...(parsed.engine?.api ?? {}) } },
+          // migration : les états antérieurs à la v3 passent sur TensorFlow.js
+          engine:
+            storedVersion < STORAGE_VERSION
+              ? { ...engine, engine: DEFAULT_ENGINE.engine }
+              : engine,
+          version: STORAGE_VERSION,
         };
       }
     }
   } catch {
     /* ignore */
   }
-  return { profile: null, session: newSession(), history: [], onboarded: false, engine: DEFAULT_ENGINE };
+  return {
+    profile: null,
+    session: newSession(),
+    history: [],
+    onboarded: false,
+    engine: DEFAULT_ENGINE,
+    version: STORAGE_VERSION,
+  };
 }
 
 type Ctx = {
@@ -100,7 +125,14 @@ const AppCtx = createContext<Ctx | null>(null);
 export function AppProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<StoredState>(() =>
     typeof window === "undefined"
-      ? { profile: null, session: newSession(), history: [], onboarded: false, engine: DEFAULT_ENGINE }
+      ? {
+          profile: null,
+          session: newSession(),
+          history: [],
+          onboarded: false,
+          engine: DEFAULT_ENGINE,
+          version: STORAGE_VERSION,
+        }
       : load()
   );
   const [now, setNow] = useState(() => Date.now());
@@ -238,6 +270,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       history: [],
       onboarded: false,
       engine: s.engine, // on garde la configuration du moteur (hors clé API)
+      version: STORAGE_VERSION,
     }));
     try {
       localStorage.removeItem(STORAGE_KEY);

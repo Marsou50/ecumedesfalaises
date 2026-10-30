@@ -102,7 +102,7 @@ export function Landing({
 
             <Reveal delay={250}>
               <ul className="mt-6 flex flex-wrap items-center gap-x-5 gap-y-2 text-[11.5px] font-bold text-marine-950/45">
-                <li className="flex items-center gap-1.5"><Lock className="h-3.5 w-3.5" aria-hidden /> 100 % sur votre appareil</li>
+                <li className="flex items-center gap-1.5"><Lock className="h-3.5 w-3.5" aria-hidden /> Analyse dans le navigateur, photo jamais envoyée</li>
                 <li className="flex items-center gap-1.5"><Check className="h-3.5 w-3.5 text-lagoon-600" aria-hidden /> Sans compte</li>
                 <li className="flex items-center gap-1.5"><Check className="h-3.5 w-3.5 text-lagoon-600" aria-hidden /> Gratuit</li>
               </ul>
@@ -267,7 +267,7 @@ export function Landing({
               <div>
                 <p className="text-[11px] font-extrabold uppercase tracking-[0.2em] text-lagoon-700">Sous le capot</p>
                 <h2 className="font-display mt-2 max-w-xl text-balance text-[26px] font-medium leading-tight tracking-tight text-marine-950 sm:text-[30px]">
-                  Trois moteurs, <em className="italic text-lagoon-700">un seul écran</em>
+                  Un modèle sur l'appareil, <em className="italic text-lagoon-700">zéro photo envoyée</em>
                 </h2>
               </div>
               <button
@@ -281,21 +281,21 @@ export function Landing({
           <div className="mt-5 grid gap-3 sm:grid-cols-3">
             {[
               {
-                icon: Palette,
-                t: "Couleurs",
-                d: "Analyse locale instantanée, zéro réseau, zéro téléchargement.",
+                icon: Cpu,
+                t: "TensorFlow.js",
+                d: "MobileNet v2 en WebGL sur l'appareil : détecte verres, bouteilles et bars. Aucune clé, aucune photo transmise.",
                 tag: "par défaut",
               },
               {
-                icon: Cpu,
-                t: "TensorFlow.js",
-                d: "MobileNet v2 en WebGL sur l'appareil : détecte verres, bouteilles et bars.",
-                tag: "~14 Mo au 1er chargement",
+                icon: Palette,
+                t: "Couleurs",
+                d: "Analyse locale instantanée de la teinte et du remplissage, utilisée en secours.",
+                tag: "zéro téléchargement",
               },
               {
                 icon: Cloud,
                 t: "API vision",
-                d: "Gemini, OpenAI, Mistral : un modèle multimodal identifie la boisson en JSON.",
+                d: "Gemini, OpenAI, Mistral : option pour ceux qui veulent la précision maximale.",
                 tag: "clé requise",
               },
             ].map((m) => (

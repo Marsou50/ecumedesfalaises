@@ -28,32 +28,32 @@ const ENGINES: {
   cost: string;
 }[] = [
   {
-    id: "heuristique",
-    icon: Palette,
-    title: "Analyse locale des couleurs",
-    tag: "Par défaut · instantané",
-    lines: [
-      "Teinte, saturation, luminosité et niveau de remplissage mesurés sur l'image.",
-      "Aucun téléchargement, aucun réseau, fonctionne hors ligne.",
-    ],
-    cost: "0 Mo · 0 €",
-  },
-  {
     id: "tensorflow",
     icon: Cpu,
     title: "TensorFlow.js · MobileNet v2",
-    tag: "100 % dans le navigateur",
+    tag: "Par défaut · recommandé",
     lines: [
       "Vrai réseau de neurones (ImageNet, 1 000 classes) exécuté en WebGL sur l'appareil.",
-      "Détecte verres, bouteilles, bars et contextes de boisson — pas le degré d'alcool.",
+      "Aucun compte, aucune clé, aucune photo transmise : tout reste sur le téléphone.",
     ],
     cost: "~14 Mo au 1er chargement · gratuit",
+  },
+  {
+    id: "heuristique",
+    icon: Palette,
+    title: "Analyse locale des couleurs",
+    tag: "Secours · instantané",
+    lines: [
+      "Teinte, saturation, luminosité et niveau de remplissage mesurés sur l'image.",
+      "Aucun téléchargement : utilisé automatiquement si le modèle ne peut pas charger.",
+    ],
+    cost: "0 Mo · 0 €",
   },
   {
     id: "api",
     icon: Cloud,
     title: "API vision multimodale",
-    tag: "Précision maximale",
+    tag: "Optionnel · clé requise",
     lines: [
       "La photo est envoyée à un modèle vision (Gemini, OpenAI, Mistral…) qui renvoie un JSON de boissons.",
       "Meilleure reconnaissance des cocktails et des verres réels, mais la clé est exposée dans le navigateur.",

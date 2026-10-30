@@ -16,7 +16,7 @@ Application de prévention : on photographie ses verres, l'application estime l'
 | `Landing` | Présentation, création du profil en 30 s, accès à une soirée de démonstration. |
 | `Ce soir` / `Results` | Jauge d'alcoolémie, verdict « conduite possible / pas encore », heure de retour sous le seuil, heure de retour à zéro, courbe prévisionnelle 48 h, conseils de récupération, étapes de la soirée, repère « le verre de trop » personnalisé. |
 | `ScanSheet` | Prise de photo (caméra ou import), moteur de reconnaissance sélectionnable, 3 boissons candidates avec indice de confiance, aperçu des signaux mesurés, ajustement du volume et de l'heure (« c'était il y a… »), ajout au journal. |
-| `EngineSheet` | Choix du moteur de reconnaissance, réglage de la clé API, tests de connexion réels (chargement MobileNet, appel API). |
+| `EngineSheet` | Choix du moteur de reconnaissance (TensorFlow.js par défaut), réglage optionnel de la clé API, tests de connexion réels (chargement MobileNet, appel API). |
 | `Journal` | Liste horodatée des verres, décalage de ±15 min, suppression, contexte du dernier repas, bilan, clôture de soirée et historique des soirées précédentes. |
 | `Comprendre` | Seuils légaux, verre standard, formule utilisée, mythes, plan B, FAQ. |
 | `ProfileSheet` | Sexe biologique, poids, taille, âge, type de permis, vitesse d'élimination, aperçu immédiat du coefficient de diffusion. |
@@ -31,9 +31,18 @@ mémorisé dans le `localStorage` et affiché partout dans l'interface.
 
 | Moteur | Technologie | Coût | Précision |
 | --- | --- | --- | --- |
-| **Couleurs** (par défaut) | Analyse locale des pixels : teinte dominante, saturation, luminosité, niveau de remplissage | 0 ko, hors ligne | Famille de boisson approximative |
-| **TensorFlow.js** | MobileNet v2 (ImageNet, 1 000 classes), exécuté en WebGL sur l'appareil | ~14 Mo au 1er chargement + 2 scripts CDN | Reconnaît verres, bouteilles, bars ; croisé avec la teinte |
-| **API vision** | Gemini, OpenAI, Mistral ou tout endpoint compatible OpenAI, réponse JSON contrainte | Payant, clé requise | Meilleure reconnaissance des cocktails et verres réels |
+| **TensorFlow.js** (par défaut) | MobileNet v2 (ImageNet, 1 000 classes), exécuté en WebGL sur l'appareil | ~14 Mo au 1er chargement + 2 scripts CDN, gratuit, sans compte | Reconnaît verres, bouteilles, bars ; croisé avec la teinte |
+| **Couleurs** (secours) | Analyse locale des pixels : teinte dominante, saturation, luminosité, niveau de remplissage | 0 ko, hors ligne | Famille de boisson approximative |
+| **API vision** (option) | Gemini, OpenAI, Mistral ou tout endpoint compatible OpenAI, réponse JSON contrainte | Payant, clé requise, photo transmise | Meilleure reconnaissance des cocktails et verres réels |
+
+Le moteur par défaut est **TensorFlow.js** : aucune clé, aucun compte, et la photo ne quitte
+jamais l'appareil. Le modèle est préchargé dès l'ouverture du scanner (avec indicateur de
+progression et statut affiché : chargement / prêt / indisponible), et l'analyse des couleurs
+prend le relais automatiquement si le CDN est inaccessible.
+
+Les états stockés en `localStorage` portent une `version` de schéma : un état antérieur à la
+**version 3** est migré silencieusement vers TensorFlow.js, tandis qu'un choix explicite de
+l'utilisateur reste respecté ensuite.
 
 ### Fonctionnement
 
@@ -50,6 +59,13 @@ mémorisé dans le `localStorage` et affiché partout dans l'interface.
    une description libre est remappée sur le catalogue en dernier recours.
 4. **Repli** — toute erreur (clé absente, CORS, 401/404/429, timeout de 25 s, CDN
    inaccessible) bascule automatiquement sur l'analyse locale, avec un message explicite.
+
+### Pourquoi TensorFlow.js par défaut
+
+L'application est un outil de prévention nocturne : elle doit fonctionner sans compte, sans
+carte, et sans envoyer de photo de soirée à un tiers. MobileNet v2 tourne donc sur l'appareil.
+L'API vision reste disponible pour ceux qui la souhaitent explicitement, avec un
+avertissement clair sur la transmission de l'image et l'exposition de la clé.
 
 ### Sécurité de la clé API
 

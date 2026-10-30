@@ -50,9 +50,9 @@ const FAQ_RECOGNITION: Record<
   (engine: string) => string
 > = {
   heuristique: () =>
-    "Le moteur actif (analyse locale des couleurs) mesure la teinte, la saturation, la luminosité et le niveau de remplissage, puis propose jusqu'à 3 boissons avec un indice de confiance. Il ne lit jamais le degré d'alcool : vous devez vérifier et ajuster la proposition.",
+    "Le moteur actif (analyse locale des couleurs, mode de secours) mesure la teinte, la saturation, la luminosité et le niveau de remplissage, puis propose jusqu'à 3 boissons avec un indice de confiance. Il ne lit jamais le degré d'alcool : vous devez vérifier et ajuster la proposition.",
   tensorflow: (engine) =>
-    `Le moteur actif (${engine}) exécute un vrai réseau de neurones entraîné sur ImageNet (1 000 classes générales). Il reconnaît très bien un verre, une bouteille, un bar ou un cocktail, mais ImageNet ne contient aucune classe « pinte » ou « mojito » : les familles détectées sont croisées avec la teinte mesurée pour proposer une boisson. Le degré reste donc estimé, jamais lu.`,
+    `Le moteur actif (${engine}) exécute un vrai réseau de neurones entraîné sur ImageNet (1 000 classes générales), directement sur votre appareil : la photo ne quitte jamais le téléphone et aucun compte n'est nécessaire. Il reconnaît très bien un verre, une bouteille, un bar ou un cocktail, mais ImageNet ne contient aucune classe « pinte » ou « mojito » : les familles détectées sont croisées avec la teinte mesurée pour proposer une boisson. Le degré reste donc estimé, jamais lu.`,
   api: (engine) =>
     `Le moteur actif (${engine}) envoie la photo à un modèle multimodal qui répond en JSON avec une liste de boissons de notre catalogue, un volume et un degré estimés. C'est le plus précis des trois, mais l'image quitte l'appareil, la clé est exposée au navigateur et une erreur du modèle reste possible : la confirmation humaine est obligatoire.`,
 };

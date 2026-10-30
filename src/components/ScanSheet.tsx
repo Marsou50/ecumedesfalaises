@@ -7,7 +7,7 @@ import { cn } from "../utils/cn";
 import { DRINKS, VOLUME_PRESETS, FILL_RATIO, getDrink, type Drink, type ScanCandidate } from "../lib/drinks";
 import { alcoholGrams, fmtBac } from "../lib/bac";
 import {
-  ENGINE_LABELS, recognize,
+  ENGINE_LABELS, recognize, loadMobileNet, isMobileNetLoaded, hasWebGL,
   type ColorSamples, type EngineOutput, type Signal, type TfProgress,
 } from "../lib/recognition";
 import { EngineSheet } from "./EngineSheet";
@@ -153,6 +153,36 @@ export function ScanSheet({
       setVolume(d.volumeCl);
     }
   }, [open, initialDrinkId]);
+
+  // Préchargement du modèle dès l'ouverture du scanner : quand l'utilisateur
+  // prend sa photo, l'analyse est immédiate au lieu d'attendre ~14 Mo.
+  useEffect(() => {
+    if (!open) return;
+    if (state.engine.engine !== "tensorflow") return;
+    if (isMobileNetLoaded()) {
+      setTfProgress({ status: "ready" });
+      return;
+    }
+    let cancelled = false;
+    setTfProgress({ status: "loading", detail: "Préparation du modèle…" });
+    loadMobileNet((p) => {
+      if (!cancelled) setTfProgress(p);
+    })
+      .then(() => {
+        if (!cancelled) setTfProgress({ status: "ready" });
+      })
+      .catch((err: unknown) => {
+        if (!cancelled) {
+          setTfProgress({
+            status: "error",
+            detail: err instanceof Error ? err.message : "Chargement impossible",
+          });
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [open, state.engine.engine]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -330,6 +360,37 @@ export function ScanSheet({
                 <input ref={cameraRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={onFile} />
                 <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={onFile} />
               </div>
+
+              {state.engine.engine === "tensorflow" && (
+                <div className="flex items-start gap-2 rounded-2xl bg-white p-3 ring-1 ring-marine-950/8">
+                  <span className={cn(
+                    "mt-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-lg",
+                    tfProgress?.status === "ready" ? "bg-lagoon-600 text-white"
+                      : tfProgress?.status === "error" ? "bg-gold-100 text-gold-700"
+                      : "bg-marine-950/[0.06] text-marine-950/50"
+                  )}>
+                    {tfProgress?.status === "ready" ? <Check className="h-3.5 w-3.5" aria-hidden />
+                      : tfProgress?.status === "error" ? <AlertTriangle className="h-3.5 w-3.5" aria-hidden />
+                      : <span className="h-3 w-3 animate-spin rounded-full border-2 border-marine-950/20 border-t-marine-950/60" />}
+                  </span>
+                  <div className="min-w-0">
+                    <p className="text-[11.5px] font-bold leading-snug text-marine-950">
+                      {tfProgress?.status === "ready"
+                        ? "Modèle prêt — analyse sur l'appareil"
+                        : tfProgress?.status === "error"
+                        ? "Modèle indisponible — analyse des couleurs"
+                        : "Chargement du modèle (une seule fois)…"}
+                    </p>
+                    <p className="mt-0.5 text-[10.5px] font-medium leading-snug text-marine-950/45">
+                      {tfProgress?.status === "ready"
+                        ? `MobileNet v2 ${hasWebGL() ? "en WebGL" : "sur CPU"} · aucune photo n'est envoyée sur internet.`
+                        : tfProgress?.status === "error"
+                        ? "La photo sera analysée localement par la teinte et le remplissage."
+                        : tfProgress?.detail ?? "MobileNet v2 · ~14 Mo, mis en cache pour les prochaines visites."}
+                    </p>
+                  </div>
+                </div>
+              )}
 
               <div>
                 <p className="flex items-center gap-2 text-[11.5px] font-extrabold uppercase tracking-[0.16em] text-marine-950/40">
