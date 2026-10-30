@@ -1,6 +1,6 @@
 import {
   Camera, BookOpen, LayoutDashboard, NotebookPen, UserRound, ShieldCheck,
-  Phone, Info, Waves, Check, X,
+  Phone, Info, Waves, Check, X, Cpu,
 } from "lucide-react";
 import { cn } from "../utils/cn";
 import type { Profile } from "../lib/bac";
@@ -31,12 +31,14 @@ export function AppBar({
   onTab,
   onProfile,
   onScan,
+  onEngine,
   profile,
 }: {
   tab: Tab;
   onTab: (t: Tab) => void;
   onProfile: () => void;
   onScan: () => void;
+  onEngine: () => void;
   profile: Profile | null;
 }) {
   return (
@@ -77,6 +79,14 @@ export function AppBar({
             className="hidden items-center gap-1.5 rounded-full bg-marine-950 px-3.5 py-2 text-[12.5px] font-bold text-white transition hover:-translate-y-0.5 hover:bg-marine-900 sm:flex"
           >
             <Camera className="h-3.5 w-3.5" aria-hidden /> Scanner
+          </button>
+          <button
+            onClick={onEngine}
+            className="grid h-8 w-8 place-items-center rounded-full border border-marine-950/10 bg-white/80 text-marine-950/50 transition hover:border-marine-950/25 hover:text-marine-950"
+            aria-label="Moteur de reconnaissance"
+            title="Moteur de reconnaissance"
+          >
+            <Cpu className="h-3.5 w-3.5" />
           </button>
           <button
             onClick={onProfile}

@@ -1,7 +1,7 @@
 import {
   ArrowRight, Camera, ScanEye, Gauge, Clock, ShieldCheck, Sparkles,
   ChevronRight, Beer, Wine, Martini, Utensils, Car, Smartphone, Lock,
-  Check, AlertTriangle, Info,
+  Check, AlertTriangle, Info, Cpu, Cloud, Palette, ArrowUpRight,
 } from "lucide-react";
 import { BrandMark } from "./chrome";
 import { Glass } from "./Glass";
@@ -12,9 +12,13 @@ import barGlasses from "../assets/bar-glasses.jpg";
 export function Landing({
   onStart,
   onDemo,
+  onEngine,
+  engineLabel,
 }: {
   onStart: () => void;
   onDemo: () => void;
+  onEngine: () => void;
+  engineLabel: string;
 }) {
   return (
     <div className="relative overflow-hidden">
@@ -29,12 +33,22 @@ export function Landing({
             <span className="mt-1 block text-[9px] font-extrabold uppercase tracking-[0.24em] text-marine-950/45">Fin de soirée</span>
           </span>
         </div>
-        <button
-          onClick={onStart}
-          className="rounded-full border border-marine-950/12 bg-white/70 px-4 py-2 text-[12.5px] font-bold text-marine-950 backdrop-blur transition hover:border-marine-950/30"
-        >
-          J'ai déjà un profil
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={onEngine}
+            className="hidden items-center gap-1.5 rounded-full border border-marine-950/12 bg-white/70 px-3 py-2 text-[11px] font-bold text-marine-950/60 backdrop-blur transition hover:border-marine-950/30 hover:text-marine-950 sm:flex"
+            title="Changer de moteur de reconnaissance"
+          >
+            <Cpu className="h-3.5 w-3.5" aria-hidden />
+            <span className="max-w-[150px] truncate">{engineLabel}</span>
+          </button>
+          <button
+            onClick={onStart}
+            className="rounded-full border border-marine-950/12 bg-white/70 px-4 py-2 text-[12.5px] font-bold text-marine-950 backdrop-blur transition hover:border-marine-950/30"
+          >
+            J'ai déjà un profil
+          </button>
+        </div>
       </header>
 
       <main className="relative mx-auto max-w-5xl px-4 pb-16 sm:px-6">
@@ -244,6 +258,65 @@ export function Landing({
               </div>
             </div>
           </div>
+        </section>
+
+        {/* moteurs disponibles */}
+        <section className="mt-14">
+          <Reveal>
+            <div className="flex flex-wrap items-end justify-between gap-3">
+              <div>
+                <p className="text-[11px] font-extrabold uppercase tracking-[0.2em] text-lagoon-700">Sous le capot</p>
+                <h2 className="font-display mt-2 max-w-xl text-balance text-[26px] font-medium leading-tight tracking-tight text-marine-950 sm:text-[30px]">
+                  Trois moteurs, <em className="italic text-lagoon-700">un seul écran</em>
+                </h2>
+              </div>
+              <button
+                onClick={onEngine}
+                className="inline-flex items-center gap-1.5 rounded-full bg-marine-950 px-4 py-2.5 text-[12px] font-bold text-white transition hover:-translate-y-0.5"
+              >
+                Choisir mon moteur <ArrowUpRight className="h-3.5 w-3.5" aria-hidden />
+              </button>
+            </div>
+          </Reveal>
+          <div className="mt-5 grid gap-3 sm:grid-cols-3">
+            {[
+              {
+                icon: Palette,
+                t: "Couleurs",
+                d: "Analyse locale instantanée, zéro réseau, zéro téléchargement.",
+                tag: "par défaut",
+              },
+              {
+                icon: Cpu,
+                t: "TensorFlow.js",
+                d: "MobileNet v2 en WebGL sur l'appareil : détecte verres, bouteilles et bars.",
+                tag: "~14 Mo au 1er chargement",
+              },
+              {
+                icon: Cloud,
+                t: "API vision",
+                d: "Gemini, OpenAI, Mistral : un modèle multimodal identifie la boisson en JSON.",
+                tag: "clé requise",
+              },
+            ].map((m) => (
+              <div key={m.t} className="rounded-2xl border border-marine-950/8 bg-white p-4">
+                <div className="flex items-center justify-between">
+                  <span className="grid h-9 w-9 place-items-center rounded-xl bg-marine-950/[0.05] text-marine-950/70">
+                    <m.icon className="h-[18px] w-[18px]" aria-hidden />
+                  </span>
+                  <span className="rounded-full bg-lagoon-500/10 px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-wider text-lagoon-700">
+                    {m.tag}
+                  </span>
+                </div>
+                <p className="mt-2.5 text-[13.5px] font-bold text-marine-950">{m.t}</p>
+                <p className="mt-1 text-[11.5px] leading-relaxed text-marine-950/55">{m.d}</p>
+              </div>
+            ))}
+          </div>
+          <p className="mt-3 flex items-center gap-1.5 text-[10.5px] font-semibold text-marine-950/40">
+            <span className="h-1.5 w-1.5 rounded-full bg-lagoon-500" />
+            Moteur actif : {engineLabel} — modifiable à tout moment.
+          </p>
         </section>
 
         {/* stats */}

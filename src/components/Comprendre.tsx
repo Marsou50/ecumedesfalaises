@@ -6,6 +6,8 @@ import {
 import { cn } from "../utils/cn";
 import { Reveal } from "./ui";
 import { SAFETY_MARGIN, widmarkR, type Profile } from "../lib/bac";
+import { describeEngine } from "../lib/recognition";
+import { useApp } from "../lib/store";
 
 const STANDARD = [
   { name: "Bière 5°", v: "25 cl", g: 10, color: "#d9a01a", glass: "pint" as const },
@@ -42,8 +44,26 @@ const FAQ = [
   },
 ];
 
+/** Réponse à la question « reconnaissance photo » selon le moteur actif. */
+const FAQ_RECOGNITION: Record<
+  "heuristique" | "tensorflow" | "api",
+  (engine: string) => string
+> = {
+  heuristique: () =>
+    "Le moteur actif (analyse locale des couleurs) mesure la teinte, la saturation, la luminosité et le niveau de remplissage, puis propose jusqu'à 3 boissons avec un indice de confiance. Il ne lit jamais le degré d'alcool : vous devez vérifier et ajuster la proposition.",
+  tensorflow: (engine) =>
+    `Le moteur actif (${engine}) exécute un vrai réseau de neurones entraîné sur ImageNet (1 000 classes générales). Il reconnaît très bien un verre, une bouteille, un bar ou un cocktail, mais ImageNet ne contient aucune classe « pinte » ou « mojito » : les familles détectées sont croisées avec la teinte mesurée pour proposer une boisson. Le degré reste donc estimé, jamais lu.`,
+  api: (engine) =>
+    `Le moteur actif (${engine}) envoie la photo à un modèle multimodal qui répond en JSON avec une liste de boissons de notre catalogue, un volume et un degré estimés. C'est le plus précis des trois, mais l'image quitte l'appareil, la clé est exposée au navigateur et une erreur du modèle reste possible : la confirmation humaine est obligatoire.`,
+};
+
 export function Comprendre({ profile }: { profile: Profile | null }) {
+  const { state } = useApp();
   const [open, setOpen] = useState<number | null>(0);
+  const engineName = describeEngine(state.engine);
+  const faq = FAQ.map((f) =>
+    f.q.startsWith("La reconnaissance photo") ? { ...f, a: FAQ_RECOGNITION[state.engine.engine](engineName) } : f
+  );
   const r = profile ? widmarkR(profile) : 0.7;
   const volume = profile ? Math.round(profile.weightKg * r) : 52;
 
@@ -142,7 +162,10 @@ export function Comprendre({ profile }: { profile: Profile | null }) {
             <p className="font-display mt-0.5 text-[19px] font-semibold">{String(SAFETY_MARGIN).replace(".", ",")} g/L</p>
           </div>
         </div>
-        <p className="mt-3 text-[10.5px] leading-relaxed text-white/50">
+        <p className="mt-3 flex items-center gap-1.5 text-[10.5px] font-semibold text-seafoam-200/80">
+          <Sparkles className="h-3 w-3" aria-hidden /> Moteur de reconnaissance actif : {engineName}
+        </p>
+        <p className="mt-1.5 text-[10.5px] leading-relaxed text-white/50">
           Grammes d'alcool = volume (cl) × 10 × degré (%) × 0,789 (densité de l'éthanol).
           Le coefficient r vaut 0,70 (homme) ou 0,60 (femme), ajusté selon l'IMC et l'âge.
           L'élimination est appliquée heure par heure, après une phase d'absorption progressive.
@@ -200,7 +223,7 @@ export function Comprendre({ profile }: { profile: Profile | null }) {
       <section>
         <h2 className="font-display text-[19px] font-semibold text-marine-950">Questions fréquentes</h2>
         <div className="mt-3 space-y-2">
-          {FAQ.map((f, i) => (
+          {faq.map((f, i) => (
             <Reveal key={f.q} delay={i * 40}>
               <div className="overflow-hidden rounded-2xl bg-white ring-1 ring-marine-950/8">
                 <button

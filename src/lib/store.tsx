@@ -10,6 +10,7 @@ import {
 } from "react";
 import type { DrinkEvent, FoodLevel, Profile, Session } from "./bac";
 import { getAbv, getDrink } from "./drinks";
+import type { EngineConfig, EngineId } from "./recognition";
 
 function getAbvName(drinkId: string) {
   return getDrink(drinkId).name;
@@ -22,6 +23,17 @@ export type StoredState = {
   session: Session;
   history: Session[];
   onboarded: boolean;
+  engine: EngineConfig;
+};
+
+export const DEFAULT_ENGINE: EngineConfig = {
+  engine: "heuristique",
+  api: {
+    provider: "gemini",
+    apiKey: "",
+    model: "gemini-2.5-flash",
+    baseUrl: "",
+  },
 };
 
 export const DEMO_PROFILE: Profile = {
@@ -55,13 +67,14 @@ function load(): StoredState {
           session: { ...parsed.session, events: parsed.session.events ?? [] },
           history: parsed.history ?? [],
           onboarded: Boolean(parsed.onboarded),
+          engine: { ...DEFAULT_ENGINE, ...(parsed.engine ?? {}), api: { ...DEFAULT_ENGINE.api, ...(parsed.engine?.api ?? {}) } },
         };
       }
     }
   } catch {
     /* ignore */
   }
-  return { profile: null, session: newSession(), history: [], onboarded: false };
+  return { profile: null, session: newSession(), history: [], onboarded: false, engine: DEFAULT_ENGINE };
 }
 
 type Ctx = {
@@ -79,6 +92,7 @@ type Ctx = {
   loadDemo: () => void;
   dismissOnboarding: () => void;
   clearAll: () => void;
+  setEngine: (patch: { engine?: EngineId; api?: Partial<EngineConfig["api"]> }) => void;
 };
 
 const AppCtx = createContext<Ctx | null>(null);
@@ -86,7 +100,7 @@ const AppCtx = createContext<Ctx | null>(null);
 export function AppProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<StoredState>(() =>
     typeof window === "undefined"
-      ? { profile: null, session: newSession(), history: [], onboarded: false }
+      ? { profile: null, session: newSession(), history: [], onboarded: false, engine: DEFAULT_ENGINE }
       : load()
   );
   const [now, setNow] = useState(() => Date.now());
@@ -186,6 +200,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       { id: "demo-4", drinkId: "vin-rouge", volumeCl: 15, at: base - 28 * 60_000, source: "photo", confidence: 0.78 },
     ];
     setState((s) => ({
+      ...s,
       profile: s.profile ?? DEMO_PROFILE,
       onboarded: true,
       session: {
@@ -195,7 +210,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
         food: "repas",
         updatedAt: base,
       },
-      history: s.history,
     }));
     setNow(Date.now());
   }, []);
@@ -204,8 +218,27 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setState((s) => ({ ...s, onboarded: true }));
   }, []);
 
+  const setEngine = useCallback(
+    (patch: { engine?: EngineId; api?: Partial<EngineConfig["api"]> }) => {
+      setState((s) => ({
+        ...s,
+        engine: {
+          engine: patch.engine ?? s.engine.engine,
+          api: { ...s.engine.api, ...(patch.api ?? {}) },
+        },
+      }));
+    },
+    []
+  );
+
   const clearAll = useCallback(() => {
-    setState({ profile: null, session: newSession(), history: [], onboarded: false });
+    setState((s) => ({
+      profile: null,
+      session: newSession(),
+      history: [],
+      onboarded: false,
+      engine: s.engine, // on garde la configuration du moteur (hors clé API)
+    }));
     try {
       localStorage.removeItem(STORAGE_KEY);
     } catch {
@@ -238,8 +271,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       loadDemo,
       dismissOnboarding,
       clearAll,
+      setEngine,
     }),
-    [state, now, lastAdded, learned, setProfile, updateProfile, addEvent, removeEvent, shiftEvent, setFood, resetSession, loadDemo, dismissOnboarding, clearAll]
+    [state, now, lastAdded, learned, setProfile, updateProfile, addEvent, removeEvent, shiftEvent, setFood, resetSession, loadDemo, dismissOnboarding, clearAll, setEngine]
   );
 
   return <AppCtx.Provider value={value}>{children}</AppCtx.Provider>;

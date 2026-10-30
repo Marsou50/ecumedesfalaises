@@ -1,11 +1,16 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Camera, ImagePlus, X, Check, RefreshCw, ScanEye, Sparkles, Info,
-  ChevronRight, Wine, Minus, AlertTriangle, Wand2,
+  ChevronRight, Wine, Minus, AlertTriangle, Wand2, Cpu, Cloud, Palette,
 } from "lucide-react";
 import { cn } from "../utils/cn";
-import { DRINKS, VOLUME_PRESETS, FILL_RATIO, getDrink, identifyFromPhoto, pickDrinkFamily, type Drink, type ScanCandidate } from "../lib/drinks";
+import { DRINKS, VOLUME_PRESETS, FILL_RATIO, getDrink, type Drink, type ScanCandidate } from "../lib/drinks";
 import { alcoholGrams, fmtBac } from "../lib/bac";
+import {
+  ENGINE_LABELS, recognize,
+  type ColorSamples, type EngineOutput, type Signal, type TfProgress,
+} from "../lib/recognition";
+import { EngineSheet } from "./EngineSheet";
 
 function fmtClock(ts: number) {
   return new Intl.DateTimeFormat("fr-FR", { hour: "2-digit", minute: "2-digit" }).format(new Date(ts));
@@ -18,11 +23,8 @@ type Step = "shoot" | "analyzing" | "results" | "confirm";
 type Analysis = {
   photo: string;
   candidates: ScanCandidate[];
-  hue: number;
-  saturation: number;
-  brightness: number;
-  fillPct: number;
-  family: string | null;
+  colors: ColorSamples;
+  output: EngineOutput;
 };
 
 const DEMO_PHOTOS = [
@@ -46,120 +48,54 @@ const DEMO_PHOTOS = [
   },
 ];
 
-function makeDemoPhoto(gradient: string[], label: string): string {
-  const c = document.createElement("canvas");
-  c.width = 720;
-  c.height = 900;
-  const ctx = c.getContext("2d");
-  if (!ctx) return "";
-  const g = ctx.createLinearGradient(0, 0, 0, 900);
-  g.addColorStop(0, gradient[0]);
-  g.addColorStop(0.55, gradient[1]);
-  g.addColorStop(1, gradient[2]);
-  ctx.fillStyle = g;
-  ctx.fillRect(0, 0, 720, 900);
-  // halo
-  const r = ctx.createRadialGradient(360, 330, 40, 360, 380, 460);
-  r.addColorStop(0, "rgba(255,255,255,0.55)");
-  r.addColorStop(1, "rgba(255,255,255,0)");
-  ctx.fillStyle = r;
-  ctx.fillRect(0, 0, 720, 900);
-  ctx.fillStyle = "rgba(8,32,50,0.35)";
-  ctx.font = "700 26px Manrope, sans-serif";
-  ctx.textAlign = "center";
-  ctx.fillText(`${label} · photo de démonstration`, 360, 840);
-  return c.toDataURL("image/jpeg", 0.9);
+/** Dégradé SVG autonome : sert de photo de démonstration sans canvas. */
+function demoPhotoSvg(gradient: string[], label: string): string {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="720" height="900" viewBox="0 0 720 900">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="${gradient[0]}"/>
+      <stop offset="0.55" stop-color="${gradient[1]}"/>
+      <stop offset="1" stop-color="${gradient[2]}"/>
+    </linearGradient>
+    <radialGradient id="halo" cx="0.5" cy="0.38" r="0.6">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.55"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="720" height="900" fill="url(#g)"/>
+  <rect width="720" height="900" fill="url(#halo)"/>
+  <text x="360" y="840" text-anchor="middle" font-family="Manrope, sans-serif" font-size="26" font-weight="700" fill="rgba(8,32,50,0.35)">${label} · photo de démonstration</text>
+</svg>`;
+  return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
 }
 
-type Samples = Omit<Analysis, "candidates" | "photo">;
-const FALLBACK_SAMPLES: Samples = { hue: 0, saturation: 0, brightness: 0.5, fillPct: 0.6, family: null };
-
-function analyzeImage(src: string): Promise<Samples> {
-  return new Promise((resolve) => {
-    if (!src) {
-      resolve(FALLBACK_SAMPLES);
-      return;
-    }
-    let settled = false;
-    const done = (v: Samples) => {
-      if (settled) return;
-      settled = true;
-      resolve(v);
-    };
-    // filet de sécurité : ne jamais bloquer l'utilisateur sur une image exotique
-    setTimeout(() => done(FALLBACK_SAMPLES), 4000);
-    const img = new Image();
-    img.onload = () => {
-      const size = 72;
-      const c = document.createElement("canvas");
-      c.width = size;
-      c.height = size;
-      const ctx = c.getContext("2d", { willReadFrequently: true });
-      if (!ctx) {
-        done(FALLBACK_SAMPLES);
-        return;
-      }
-      ctx.drawImage(img, 0, 0, size, size);
-      const { data } = ctx.getImageData(0, 0, size, size);
-
-      let rSum = 0;
-      let gSum = 0;
-      let bSum = 0;
-      let satSum = 0;
-      let n = 0;
-      let bottomMass = 0;
-      let topMass = 0;
-
-      for (let y = 0; y < size; y++) {
-        for (let x = 0; x < size; x++) {
-          const i = (y * size + x) * 4;
-          const r = data[i] / 255;
-          const g = data[i + 1] / 255;
-          const b = data[i + 2] / 255;
-          const max = Math.max(r, g, b);
-          const min = Math.min(r, g, b);
-          const sat = max === 0 ? 0 : (max - min) / max;
-          // on ignore les pixels quasi blancs (fond, reflets) pour la teinte
-          if (sat > 0.18 && max > 0.18) {
-            rSum += r;
-            gSum += g;
-            bSum += b;
-            satSum += sat;
-            n++;
-            if (y > size * 0.45) bottomMass += sat;
-            else topMass += sat;
-          }
-        }
-      }
-
-      let hue = 0;
-      let saturation = 0;
-      let brightness = 0.5;
-      if (n > 12) {
-        let r = rSum / n;
-        let g = gSum / n;
-        let b = bSum / n;
-        const max = Math.max(r, g, b);
-        const min = Math.min(r, g, b);
-        const d = max - min;
-        if (d !== 0) {
-          if (max === r) hue = ((g - b) / d) % 6;
-          else if (max === g) hue = (b - r) / d + 2;
-          else hue = (r - g) / d + 4;
-          hue *= 60;
-          if (hue < 0) hue += 360;
-        }
-        saturation = satSum / n;
-        brightness = (0.2126 * r + 0.7152 * g + 0.0722 * b) * 0.5 + 0.35;
-      }
-
-      const fillPct = Math.max(0.35, Math.min(0.95, 0.45 + (bottomMass / (topMass + bottomMass + 0.0001)) * 0.5));
-      const family = pickDrinkFamily(hue, saturation, brightness);
-      done({ hue, saturation, brightness, fillPct, family });
-    };
-    img.onerror = () => done(FALLBACK_SAMPLES);
-    img.src = src;
-  });
+function makeDemoPhoto(gradient: string[], label: string): string {
+  try {
+    const c = document.createElement("canvas");
+    c.width = 720;
+    c.height = 900;
+    const ctx = c.getContext("2d");
+    if (!ctx) return demoPhotoSvg(gradient, label);
+    const g = ctx.createLinearGradient(0, 0, 0, 900);
+    g.addColorStop(0, gradient[0]);
+    g.addColorStop(0.55, gradient[1]);
+    g.addColorStop(1, gradient[2]);
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, 720, 900);
+    // halo
+    const r = ctx.createRadialGradient(360, 330, 40, 360, 380, 460);
+    r.addColorStop(0, "rgba(255,255,255,0.55)");
+    r.addColorStop(1, "rgba(255,255,255,0)");
+    ctx.fillStyle = r;
+    ctx.fillRect(0, 0, 720, 900);
+    ctx.fillStyle = "rgba(8,32,50,0.35)";
+    ctx.font = "700 26px Manrope, sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText(`${label} · photo de démonstration`, 360, 840);
+    return c.toDataURL("image/jpeg", 0.9);
+  } catch {
+    return demoPhotoSvg(gradient, label);
+  }
 }
 
 export function ScanSheet({
@@ -171,7 +107,7 @@ export function ScanSheet({
   onClose: () => void;
   initialDrinkId?: string;
 }) {
-  const { addEvent, learned } = useApp();
+  const { addEvent, learned, state } = useApp();
   const [step, setStep] = useState<Step>("shoot");
   const [analysis, setAnalysis] = useState<Analysis | null>(null);
   const [progress, setProgress] = useState(0);
@@ -180,6 +116,9 @@ export function ScanSheet({
   const [volume, setVolume] = useState(12);
   const [manualId, setManualId] = useState<string | null>(null);
   const [minutesAgo, setMinutesAgo] = useState(0);
+  const [engineOpen, setEngineOpen] = useState(false);
+  const [tfProgress, setTfProgress] = useState<TfProgress | null>(null);
+  const [showSignals, setShowSignals] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const cameraRef = useRef<HTMLInputElement>(null);
   const progressTimer = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -223,32 +162,65 @@ export function ScanSheet({
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
 
-  const runAnalysis = useCallback(async (photo: string, seed?: number, hintDrinkId?: string) => {
-    setStep("analyzing");
-    setPhotoPreview(photo);
-    setProgress(0);
-    const real = await analyzeImage(photo);
-    if (progressTimer.current) clearInterval(progressTimer.current);
-    progressTimer.current = setInterval(() => {
-      setProgress((p) => Math.min(0.97, p + 0.045 + Math.random() * 0.03));
-    }, 90);
+  const runAnalysis = useCallback(
+    async (photo: string, hintDrinkId?: string) => {
+      setStep("analyzing");
+      setPhotoPreview(photo);
+      setProgress(0);
+      setTfProgress(null);
+      setShowSignals(false);
+      if (progressTimer.current) clearInterval(progressTimer.current);
+      progressTimer.current = setInterval(() => {
+        setProgress((p) => Math.min(0.94, p + 0.03 + Math.random() * 0.02));
+      }, 120);
 
-    const s = seed ?? Math.floor(real.hue * 977 + real.saturation * 3313 + real.brightness * 97 + Date.now() % 1000);
-    const candidates = identifyFromPhoto(
-      s,
-      (real.family as never) ?? null,
-      hintDrinkId,
-      learned
-    );
-
-    await new Promise((r) => setTimeout(r, 1750));
-    if (progressTimer.current) clearInterval(progressTimer.current);
-    setProgress(1);
-    setAnalysis({ photo, candidates, ...real });
-    setChosen(candidates[0]);
-    setVolume(candidates[0].volumeCl);
-    setStep("results");
-  }, [learned]);
+      const t0 = performance.now();
+      let output: EngineOutput | null = null;
+      try {
+        const res = await recognize(photo, {
+          config: state.engine,
+          hintDrinkId,
+          learned,
+          onProgress: (p) => setTfProgress(p),
+        });
+        output = res;
+        const elapsed = performance.now() - t0;
+        // on garde un temps de lecture minimal pour que l'utilisateur voie le pipeline
+        if (elapsed < 1200) await new Promise((r) => setTimeout(r, 1200 - elapsed));
+        if (progressTimer.current) clearInterval(progressTimer.current);
+        setProgress(1);
+        setAnalysis({
+          photo,
+          candidates: res.candidates,
+          colors: res.colors,
+          output: res,
+        });
+        setChosen(res.candidates[0] ?? null);
+        if (res.candidates[0]) setVolume(res.candidates[0].volumeCl);
+        setStep("results");
+      } catch (err) {
+        if (progressTimer.current) clearInterval(progressTimer.current);
+        const message = err instanceof Error ? err.message : "Analyse impossible";
+        setAnalysis({
+          photo,
+          candidates: [],
+          colors: { hue: 0, saturation: 0, brightness: 0.5, fillPct: 0.6 },
+          output: {
+            engine: state.engine.engine,
+            engineLabel: ENGINE_LABELS[state.engine.engine],
+            candidates: [],
+            signals: [],
+            warnings: [message],
+            fellBack: true,
+          },
+        });
+        setChosen(null);
+        setStep("results");
+        void output;
+      }
+    },
+    [learned, state.engine]
+  );
 
   const onFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
@@ -260,7 +232,7 @@ export function ScanSheet({
   };
 
   const useDemo = (g: string[], label: string, drinkId: string) => {
-    runAnalysis(makeDemoPhoto(g, label), g[1].length * 1337 + label.length * 31, drinkId);
+    runAnalysis(makeDemoPhoto(g, label), drinkId);
   };
 
   const confirm = () => {
@@ -301,13 +273,23 @@ export function ScanSheet({
               </p>
             </div>
           </div>
-          <button
-            onClick={onClose}
-            className="grid h-9 w-9 place-items-center rounded-full bg-marine-950/[0.06] text-marine-950/60 transition hover:bg-marine-950/10 hover:text-marine-950"
-            aria-label="Fermer"
-          >
-            <X className="h-4 w-4" />
-          </button>
+          <div className="flex items-center gap-1.5">
+            <button
+              onClick={() => setEngineOpen(true)}
+              className="flex items-center gap-1.5 rounded-full border border-marine-950/10 bg-white/70 px-2.5 py-1.5 text-[10.5px] font-extrabold text-marine-950/60 transition hover:border-marine-950/25 hover:text-marine-950"
+              aria-label="Changer de moteur de reconnaissance"
+            >
+              <CpuIcon engine={state.engine.engine} />
+              {engineShort(state.engine.engine)}
+            </button>
+            <button
+              onClick={onClose}
+              className="grid h-9 w-9 place-items-center rounded-full bg-marine-950/[0.06] text-marine-950/60 transition hover:bg-marine-950/10 hover:text-marine-950"
+              aria-label="Fermer"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
         </div>
 
         <div className="overflow-y-auto overscroll-contain px-5 py-5">
@@ -415,9 +397,9 @@ export function ScanSheet({
                   ))}
                 </div>
                 <div className="absolute inset-x-4 bottom-4 rounded-xl bg-abyss/70 px-3 py-2 text-[11.5px] font-semibold text-white/85 backdrop-blur">
-                  <div className="flex items-center justify-between">
-                    <span>Analyse du contour et de la teinte</span>
-                    <span className="tabular-nums">{Math.round(progress * 100)} %</span>
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="truncate">{engineAnalyzingLabel(state.engine.engine, tfProgress)}</span>
+                    <span className="shrink-0 tabular-nums">{Math.round(progress * 100)} %</span>
                   </div>
                   <div className="mt-1.5 h-1 overflow-hidden rounded-full bg-white/15">
                     <div className="h-full rounded-full bg-gradient-to-r from-lagoon-400 to-gold-400 transition-all duration-150" style={{ width: `${progress * 100}%` }} />
@@ -425,12 +407,7 @@ export function ScanSheet({
                 </div>
               </div>
               <ul className="space-y-2 text-[12.5px] font-semibold text-marine-950/60">
-                {[
-                  "Détection du pied et du galbe du verre",
-                  "Mesure de la teinte moyenne du liquide",
-                  "Estimation du niveau de remplissage",
-                  "Comparaison au catalogue de 30 boissons",
-                ].map((s, i) => (
+                {analyzingSteps(state.engine.engine, tfProgress).map((s, i) => (
                   <li key={s} className={cn("flex items-center gap-2 transition", progress > i * 0.22 ? "text-marine-950" : "text-marine-950/35")}>
                     <span className={cn("grid h-4 w-4 place-items-center rounded-full", progress > i * 0.22 ? "bg-lagoon-500 text-white" : "bg-marine-950/10")}>
                       <Check className="h-2.5 w-2.5" aria-hidden />
@@ -452,21 +429,29 @@ export function ScanSheet({
                   <div className="h-40 w-full bg-[radial-gradient(circle_at_50%_40%,#1a4d74,#06121e)]" />
                 )}
                 <div className="pointer-events-none absolute inset-x-4 top-4 flex flex-wrap gap-1.5">
-                  <span className="rounded-full bg-white/85 px-2.5 py-1 text-[10.5px] font-extrabold uppercase tracking-wider text-marine-950 backdrop-blur">
-                    teinte {Math.round(analysis.hue)}°
-                  </span>
-                  <span className="rounded-full bg-white/85 px-2.5 py-1 text-[10.5px] font-extrabold uppercase tracking-wider text-marine-950 backdrop-blur">
-                    saturation {Math.round(analysis.saturation * 100)} %
-                  </span>
-                  <span className="rounded-full bg-white/85 px-2.5 py-1 text-[10.5px] font-extrabold uppercase tracking-wider text-marine-950 backdrop-blur">
-                    remplissage {Math.round(analysis.fillPct * 100)} %
+                  <span className="inline-flex items-center gap-1 rounded-full bg-white/85 px-2.5 py-1 text-[10.5px] font-extrabold uppercase tracking-wider text-marine-950 backdrop-blur">
+                    {analysis.output.engine === "tensorflow" ? <Cpu className="h-2.5 w-2.5" aria-hidden />
+                      : analysis.output.engine === "api" ? <Cloud className="h-2.5 w-2.5" aria-hidden />
+                      : <Palette className="h-2.5 w-2.5" aria-hidden />}
+                    {analysis.output.fellBack ? "repli local" : engineShort(analysis.output.engine)}
                   </span>
                 </div>
               </div>
 
+              <EngineBanner
+                output={analysis.output}
+                colors={analysis.colors}
+                engineLabel={ENGINE_LABELS[state.engine.engine]}
+                open={showSignals}
+                onToggle={() => setShowSignals((v) => !v)}
+                onConfigure={() => setEngineOpen(true)}
+              />
+
               <div>
                 <p className="text-[11.5px] font-extrabold uppercase tracking-[0.16em] text-marine-950/40">
-                  3 hypothèses, du plus au moins probable
+                  {analysis.candidates.length === 0
+                    ? "Aucune hypothèse"
+                    : `${analysis.candidates.length} hypothèse${analysis.candidates.length > 1 ? "s" : ""}, de la plus à la moins probable`}
                 </p>
                 <div className="mt-2.5 space-y-2">
                   {analysis.candidates.map((c, i) => {
@@ -684,6 +669,8 @@ export function ScanSheet({
           )}
         </div>
 
+        <EngineSheet open={engineOpen} onClose={() => setEngineOpen(false)} />
+
         {step === "confirm" && !chosen && !manualId && (
           <div className="border-t border-marine-950/8 px-5 py-3">
             <button
@@ -695,6 +682,177 @@ export function ScanSheet({
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Libellés et blocs liés au moteur                                  */
+/* ------------------------------------------------------------------ */
+
+function engineShort(engine: string): string {
+  if (engine === "tensorflow") return "MobileNet";
+  if (engine === "api") return "API vision";
+  return "Couleurs";
+}
+
+function CpuIcon({ engine }: { engine: string }) {
+  if (engine === "tensorflow") return <Cpu className="h-3 w-3" aria-hidden />;
+  if (engine === "api") return <Cloud className="h-3 w-3" aria-hidden />;
+  return <Palette className="h-3 w-3" aria-hidden />;
+}
+
+function engineAnalyzingLabel(engine: string, tf: TfProgress | null): string {
+  if (engine === "tensorflow") {
+    if (tf?.status === "loading") return tf.detail ?? "Chargement du modèle…";
+    if (tf?.status === "running") return "Classification en cours…";
+    return "Préparation de TensorFlow.js…";
+  }
+  if (engine === "api") return "Analyse par le modèle vision…";
+  return "Analyse du contour et de la teinte";
+}
+
+function analyzingSteps(engine: string, tf: TfProgress | null): string[] {
+  if (engine === "tensorflow") {
+    return [
+      "Chargement de MobileNet v2 (WebGL)",
+      "Exécution du réseau sur la photo",
+      tf?.status === "ready" ? "Modèle prêt" : "Lecture des 1 000 classes ImageNet",
+      "Croisement avec la mesure des couleurs",
+    ];
+  }
+  if (engine === "api") {
+    return [
+      "Redimensionnement de la photo (1 024 px)",
+      "Envoi au modèle vision",
+      "Lecture du JSON de boissons",
+      "Croisement avec le catalogue local",
+    ];
+  }
+  return [
+    "Détection du pied et du galbe du verre",
+    "Mesure de la teinte moyenne du liquide",
+    "Estimation du niveau de remplissage",
+    "Comparaison au catalogue de 30 boissons",
+  ];
+}
+
+function EngineBanner({
+  output,
+  colors,
+  engineLabel,
+  open,
+  onToggle,
+  onConfigure,
+}: {
+  output: EngineOutput;
+  colors: ColorSamples;
+  engineLabel: string;
+  open: boolean;
+  onToggle: () => void;
+  onConfigure: () => void;
+}) {
+  const failed = output.fellBack;
+  return (
+    <div className={cn(
+      "rounded-2xl p-3 ring-1",
+      failed ? "bg-gold-100/60 ring-gold-500/25" : "bg-marine-950/[0.035] ring-marine-950/8"
+    )}>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex min-w-0 items-center gap-2">
+          <span className={cn(
+            "grid h-7 w-7 shrink-0 place-items-center rounded-lg",
+            failed ? "bg-gold-500/20 text-gold-700" : "bg-lagoon-500/15 text-lagoon-700"
+          )}>
+            {output.engine === "tensorflow" ? <Cpu className="h-3.5 w-3.5" aria-hidden />
+              : output.engine === "api" ? <Cloud className="h-3.5 w-3.5" aria-hidden />
+              : <Palette className="h-3.5 w-3.5" aria-hidden />}
+          </span>
+          <div className="min-w-0">
+            <p className="truncate text-[12px] font-extrabold text-marine-950">
+              {failed ? "Repli sur l'analyse locale" : output.engineLabel}
+            </p>
+            <p className="text-[10px] font-semibold text-marine-950/45">
+              {output.elapsedMs != null ? `${(output.elapsedMs / 1000).toFixed(1)} s` : "—"}
+              {" · "}
+              {output.engine === "api" ? "photo envoyée au fournisseur" : "photo jamais transmise"}
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <button
+            onClick={onToggle}
+            className="rounded-full bg-white px-2.5 py-1 text-[10.5px] font-extrabold text-marine-950/60 ring-1 ring-marine-950/10 transition hover:text-marine-950"
+            aria-expanded={open}
+          >
+            {open ? "Masquer" : "Détails"}
+          </button>
+          <button
+            onClick={onConfigure}
+            className="rounded-full bg-marine-950 px-2.5 py-1 text-[10.5px] font-extrabold text-white transition hover:bg-marine-900"
+          >
+            Moteur
+          </button>
+        </div>
+      </div>
+
+      {open && (
+        <div className="mt-2.5 space-y-2 border-t border-marine-950/8 pt-2.5">
+          <div className="grid grid-cols-3 gap-1.5">
+            <Chip label="Teinte" value={`${Math.round(colors.hue)}°`} />
+            <Chip label="Saturation" value={`${Math.round(colors.saturation * 100)} %`} />
+            <Chip label="Remplissage" value={`${Math.round(colors.fillPct * 100)} %`} />
+          </div>
+          {output.signals.length > 0 && (
+            <ul className="space-y-1.5">
+              {output.signals.map((sig: Signal) => (
+                <li key={sig.label} className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="text-[11px] font-bold text-marine-950/75">{sig.label}</p>
+                    {sig.detail && <p className="truncate text-[10px] font-medium text-marine-950/45">{sig.detail}</p>}
+                  </div>
+                  <div className="flex shrink-0 items-center gap-1.5">
+                    <div className="h-1 w-12 overflow-hidden rounded-full bg-marine-950/10">
+                      <div className="h-full rounded-full bg-lagoon-500" style={{ width: `${Math.round(Math.min(1, sig.weight) * 100)}%` }} />
+                    </div>
+                    <span className="w-7 text-right text-[9.5px] font-bold tabular-nums text-marine-950/40">
+                      {Math.round(Math.min(1, sig.weight) * 100)}%
+                    </span>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+          {typeof output.raw === "string" && output.raw && (
+            <p className="rounded-lg bg-white/70 p-2 text-[10.5px] italic leading-relaxed text-marine-950/55">
+              « {output.raw} »
+            </p>
+          )}
+          <p className="text-[9.5px] font-semibold uppercase tracking-wider text-marine-950/30">
+            moteur : {engineLabel}
+          </p>
+        </div>
+      )}
+
+      {output.warnings.length > 0 && (
+        <ul className="mt-2 space-y-1">
+          {output.warnings.map((w) => (
+            <li key={w} className="flex items-start gap-1.5 text-[10.5px] font-semibold leading-relaxed text-gold-700">
+              <AlertTriangle className="mt-0.5 h-3 w-3 shrink-0" aria-hidden />
+              {w}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+function Chip({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-lg bg-white/70 px-2 py-1.5 text-center ring-1 ring-marine-950/[0.06]">
+      <p className="text-[9px] font-extrabold uppercase tracking-wider text-marine-950/35">{label}</p>
+      <p className="text-[11.5px] font-bold tabular-nums text-marine-950">{value}</p>
     </div>
   );
 }

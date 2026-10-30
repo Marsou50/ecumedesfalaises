@@ -7,12 +7,15 @@ import { Journal } from "./components/Journal";
 import { Comprendre } from "./components/Comprendre";
 import { ScanSheet } from "./components/ScanSheet";
 import { ProfileSheet } from "./components/ProfileSheet";
+import { EngineSheet } from "./components/EngineSheet";
+import { ENGINE_LABELS } from "./lib/recognition";
 
 function Shell() {
   const { state, now, loadDemo, lastAdded } = useApp();
   const [tab, setTab] = useState<Tab>("soir");
   const [scanOpen, setScanOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [engineOpen, setEngineOpen] = useState(false);
 
   const hasProfile = Boolean(state.profile);
 
@@ -54,6 +57,8 @@ function Shell() {
     <div className="min-h-screen bg-ivory font-sans text-marine-950 antialiased">
       {showLanding ? (
         <Landing
+          onEngine={() => setEngineOpen(true)}
+          engineLabel={ENGINE_LABELS[state.engine.engine]}
           onStart={startApp}
           onDemo={() => {
             onDemo();
@@ -67,6 +72,7 @@ function Shell() {
             onTab={setTab}
             onScan={openScan}
             onProfile={() => setProfileOpen(true)}
+            onEngine={() => setEngineOpen(true)}
             profile={state.profile}
           />
 
@@ -104,6 +110,8 @@ function Shell() {
         onboard={!hasProfile}
         onClose={() => setProfileOpen(false)}
       />
+
+      <EngineSheet open={engineOpen} onClose={() => setEngineOpen(false)} />
 
       <Toast message={toast ?? addedToast} tone={toastTone} />
     </div>
