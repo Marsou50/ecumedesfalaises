@@ -181,6 +181,25 @@ export const PROVIDER_DEFAULT_MODEL: Record<ApiProvider, string> = {
   compatible: "gpt-4o-mini",
 };
 
+/**
+ * Modèles suggérés par fournisseur (les noms évoluent vite : le champ reste
+ * libre, ces valeurs ne sont que des propositions affichées dans l'interface).
+ */
+export const PROVIDER_MODEL_SUGGESTIONS: Record<ApiProvider, string[]> = {
+  gemini: ["gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-3-flash", "gemini-2.5-pro"],
+  openai: ["gpt-4.1-mini", "gpt-4o-mini", "gpt-4.1"],
+  mistral: ["pixtral-12b-2409", "pixtral-large-latest", "mistral-small-latest"],
+  compatible: ["gpt-4o-mini", "llama-3.2-11b-vision-preview", "qwen2.5-vl-72b-instruct"],
+};
+
+/** Palier gratuit connu, affiché à titre indicatif. */
+export const PROVIDER_FREE_TIER: Record<ApiProvider, string> = {
+  gemini: "Palier gratuit Google AI Studio, sans carte bancaire",
+  openai: "Pas de palier gratuit — facturation requise",
+  mistral: "Palier gratuit d'évaluation sur La Plateforme",
+  compatible: "Selon le fournisseur de l'endpoint",
+};
+
 /** Description du moteur actif, pour la pédagogie et les journaux. */
 export function describeEngine(cfg: EngineConfig): string {
   if (cfg.engine === "tensorflow") return "TensorFlow.js — MobileNet v2 (WebGL)";

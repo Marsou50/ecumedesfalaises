@@ -6,6 +6,7 @@ import {
 import { cn } from "../utils/cn";
 import {
   PROVIDER_LABELS, PROVIDER_DEFAULT_MODEL, PROVIDER_DEFAULT_URL,
+  PROVIDER_MODEL_SUGGESTIONS, PROVIDER_FREE_TIER,
   ENGINE_LABELS, hasWebGL, isMobileNetLoaded, loadMobileNet,
   runApiEngine, prepareImage, sampleColors,
   type ApiProvider, type EngineId,
@@ -345,6 +346,11 @@ export function EngineSheet({ open, onClose }: { open: boolean; onClose: () => v
                       </div>
                     </div>
 
+                    <p className="flex items-start gap-1.5 rounded-lg bg-lagoon-500/[0.07] p-2 text-[10px] font-semibold leading-relaxed text-lagoon-700">
+                      <Info className="mt-0.5 h-3 w-3 shrink-0" aria-hidden />
+                      {PROVIDER_FREE_TIER[provider]}
+                    </p>
+
                     <label className="block">
                       <span className="flex items-center gap-1.5 text-[10.5px] font-extrabold uppercase tracking-wider text-marine-950/40">
                         <KeyRound className="h-3 w-3" aria-hidden /> Clé API
@@ -369,6 +375,22 @@ export function EngineSheet({ open, onClose }: { open: boolean; onClose: () => v
                           placeholder={PROVIDER_DEFAULT_MODEL[provider]}
                           className="mt-1 w-full rounded-lg border border-marine-950/12 bg-white px-2.5 py-2 font-mono text-[11.5px] text-marine-950 outline-none focus:border-lagoon-600"
                         />
+                        <span className="mt-1 flex flex-wrap gap-1">
+                          {PROVIDER_MODEL_SUGGESTIONS[provider].slice(0, 3).map((m) => (
+                            <button
+                              key={m}
+                              onClick={() => setModel(m)}
+                              className={cn(
+                                "rounded px-1.5 py-0.5 text-[9px] font-bold transition",
+                                model === m
+                                  ? "bg-lagoon-600 text-white"
+                                  : "bg-marine-950/[0.06] text-marine-950/50 hover:bg-marine-950/10"
+                              )}
+                            >
+                              {m}
+                            </button>
+                          ))}
+                        </span>
                       </label>
                       <label className="block">
                         <span className="text-[10.5px] font-extrabold uppercase tracking-wider text-marine-950/40">URL de base</span>
