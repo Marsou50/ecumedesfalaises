@@ -187,7 +187,7 @@ export function Landing({
               {
                 icon: Camera,
                 n: "02",
-                t: "Un photo par verre",
+                t: "Une photo par verre",
                 d: "La forme, la teinte et le niveau du verre donnent une proposition : vous confirmez le volume.",
               },
               {
