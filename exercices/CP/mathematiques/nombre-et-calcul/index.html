@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mon exercice de CP - Mathématiques</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Comic+Neue:wght@400;700&family=Fredoka:wght@400;600&display=swap');
+
+  :root {
+    --bg: #f0f7ff;
+    --ink: #2d3a2a;
+    --pink: #ff9aa2;
+    --blue: #9cdbff;
+    --green: #caffbf;
+    --yellow: #ffd6a5;
+    --purple: #d7bde2;
+    --orange: #ffb347;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    font-family: 'Fredoka', sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+    margin: 0;
+    padding: 18px;
+    min-height: 100vh;
+  }
+
+  .page {
+    max-width: 740px;
+    margin: 0 auto;
+    background: #ffffff;
+    border: 8px dashed #48cae4;
+    border-radius: 24px;
+    padding: 30px 26px;
+    box-shadow: 0 12px 30px rgba(0,0,0,0.08);
+  }
+
+  @media print {
+    body { background: #fff; padding: 0; }
+    .page { border: none; box-shadow: none; max-width: 100%; padding: 20px; }
+    .no-print { display: none !important; }
+  }
+
+  header {
+    text-align: center;
+    margin-bottom: 26px;
+    padding-bottom: 18px;
+    border-bottom: 4px solid #48cae4;
+    position: relative;
+  }
+
+  header::after {
+    content: "✂";
+    position: absolute;
+    left: 50%;
+    bottom: -14px;
+    transform: translateX(-50%);
+    font-size: 26px;
+    color: #48cae4;
+    background: #fff;
+    padding: 0 10px;
+  }
+
+  h1 {
+    font-family: 'Comic Neue', cursive;
+    font-size: 34px;
+    color: #05668d;
+    margin: 0 0 6px;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    text-shadow: 1px 1px 0 #fff7ed;
+  }
+
+  .subtitle {
+    font-size: 16px;
+    color: #5a6b5a;
+    margin: 0;
+  }
+
+  .name-line {
+    margin-top: 14px;
+    font-size: 15px;
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    align-items: center;
+  }
+
+  .name-line input {
+    flex: 1;
+    max-width: 220px;
+    border: none;
+    border-bottom: 2px dashed #48cae4;
+    font-family: inherit;
+    font-size: 16px;
+    padding: 4px 8px;
+    outline: none;
+  }
+
+  .name-line input:focus { border-color: #05668d; }
+
+  .consigne {
+    background: var(--yellow);
+    border-left: 6px solid #fab1a0;
+    padding: 12px 16px;
+    border-radius: 10px;
+    margin: 22px 0;
+    font-size: 15px;
+    color: #6d4c41;
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .consigne .icone { font-size: 22px; line-height: 1; }
+
+  h2 {
+    font-family: 'Comic Neue', cursive;
+    font-size: 22px;
+    color: #05668d;
+    margin: 30px 0 14px;
+    padding-left: 10px;
+    border-left: 5px solid var(--blue);
+  }
+
+  .exercice {
+    margin-bottom: 30px;
+    page-break-inside: avoid;
+  }
+
+  .exercice:last-child { margin-bottom: 0; }
+
+  /* Activité 1 : comptage */
+  .objets {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px;
+    justify-content: center;
+    align-items: center;
+    margin-bottom: 12px;
+  }
+
+  .objet {
+    width: 56px;
+    height: 56px;
+    background: #ffe5e5;
+    border: 2px dashed #ff9aa2;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px;
+    user-select: none;
+    cursor: pointer;
+    transition: 0.15s;
+  }
+
+  .objet.compte { background: #caffbf; border-color: #2d6a4f; }
+  .objet:hover:not(.compte) { background: #ffe5e5; transform: translateY(-2px); }
+
+  .choix-nombres {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  .chiffre {
+    width: 52px;
+    height: 52px;
+    border-radius: 14px;
+    border: 2px solid #dcd7ca;
+    background: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 26px;
+    font-weight: 700;
+    color: #4a4a4a;
+    cursor: pointer;
+    transition: 0.15s;
+  }
+
+  .chiffre:hover { border-color: #48cae4; transform: translateY(-2px); }
+  .chiffre.choisi { background: #48cae4; color: #fff; border-color: #05668d; }
+
+  /* Activité 2 : reconnaissance chiffres */
+  .grille-chiffres {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 12px;
+    justify-content: center;
+    max-width: 400px;
+    margin: 0 auto 12px;
+  }
+
+  .case-chiffre {
+    aspect-ratio: 1;
+    border-radius: 16px;
+    border: 2px solid #48cae4;
+    background: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 32px;
+    font-weight: 700;
+    color: #05668d;
+    cursor: pointer;
+    transition: 0.15s;
+  }
+
+  .case-chiffre:hover { background: #9cdbff; color: #fff; }
+  .case-chiffre.choisi { background: #05668d; color: #fff; border-color: #05668d; }
+
+  /* Activité 3 : additions avec images */
+  .addition {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin-bottom: 16px;
+  }
+
+  .groupe-objets {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+
+  .petit-objet {
+    width: 36px;
+    height: 36px;
+    background: #ffe5e5;
+    border: 2px dashed #ff9aa2;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+  }
+
+  .signe {
+    font-size: 24px;
+    font-weight: 700;
+    color: #05668d;
+  }
+
+  .reponse-add {
+    width: 52px;
+    height: 52px;
+    border-radius: 12px;
+    border: 2px solid #48cae4;
+    background: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    font-weight: 700;
+    color: #05668d;
+    cursor: pointer;
+    transition: 0.15s;
+  }
+
+  .reponse-add:hover { background: #9cdbff; }
+  .reponse-add.choisi { background: #05668d; color: #fff; }
+
+  /* Activité 4 : comparaison */
+  .comparaison {
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 20px;
+    margin-bottom: 14px;
+  }
+
+  .bloc-nombre {
+    text-align: center;
+  }
+
+  .nombre-geant {
+    font-size: 48px;
+    font-weight: 800;
+    color: #05668d;
+    display: block;
+  }
+
+  .objets-geants {
+    display: flex;
+    gap: 6px;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin-top: 8px;
+  }
+
+  .symbole {
+    font-size: 32px;
+    font-weight: 800;
+    color: #e75480;
+  }
+
+  .choix-symbole {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  .symbole-btn {
+    width: 56px;
+    height: 56px;
+    border-radius: 14px;
+    border: 2px solid #dcd7ca;
+    background: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 26px;
+    font-weight: 700;
+    color: #4a4a4a;
+    cursor: pointer;
+    transition: 0.15s;
+  }
+
+  .symbole-btn:hover { border-color: #48cae4; }
+  .symbole-btn.choisi { background: #48cae4; color: #fff; border-color: #05668d; }
+
+  .reponse {
+    margin-top: 14px;
+    text-align: center;
+    font-size: 14px;
+    color: #666;
+    font-style: italic;
+  }
+
+  .bravo {
+    margin-top: 34px;
+    text-align: center;
+    background: linear-gradient(135deg, var(--blue), var(--purple));
+    border-radius: 20px;
+    padding: 22px;
+    color: #fff;
+    font-family: 'Comic Neue', cursive;
+  }
+
+  .bravo h2 { color: #fff; margin-top: 0; border: none; padding: 0; font-size: 26px; }
+  .bravo p { margin: 6px 0; font-size: 15px; }
+
+  .etoiles { font-size: 24px; letter-spacing: 6px; margin: 10px 0; }
+
+  .footer {
+    margin-top: 26px;
+    text-align: center;
+    font-size: 12px;
+    color: #999;
+    border-top: 1px dashed #ddd;
+    padding-top: 12px;
+  }
+
+  button {
+    margin-top: 10px;
+    padding: 10px 22px;
+    font-family: inherit;
+    font-size: 15px;
+    font-weight: 700;
+    color: #fff;
+    background: #05668d;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    box-shadow: 0 4px 10px rgba(5,102,141,0.35);
+    transition: 0.15s;
+  }
+
+  button:hover { background: #023e8a; transform: translateY(-1px); }
+  button:active { transform: translateY(0); }
+</style>
+</head>
+<body>
+
+<div class="page">
+
+  <header>
+    <h1>Mon exercice de CP 🎒</h1>
+    <p class="subtitle">Mathématiques — Nombres &amp; calcul &nbsp;•&nbsp; 6 ans</p>
+    <div class="name-line">
+      <span>Prénom :</span>
+      <input type="text" placeholder="Écris ton prénom ici">
+      <span>🧮</span>
+    </div>
+  </header>
+
+  <div class="consigne">
+    <span class="icone">🧮</span>
+    <span>Lis bien chaque consigne. Clique sur les bonnes réponses. Quand tu as fini, montre à papa ou maman !</span>
+  </div>
+
+  <!-- ACTIVITE 1 : comptage -->
+  <div class="exercice" id="ex1">
+    <h2>Activité 1 — Je compte les objets 🍎</h2>
+    <p style="font-size:15px; margin:0 0 10px;">Compte les pommes, puis clique sur le bon chiffre :</p>
+    <div class="objets" id="objets1">
+      <span class="objet">🍎</span>
+      <span class="objet">🍎</span>
+      <span class="objet">🍎</span>
+      <span class="objet">🍎</span>
+      <span class="objet">🍎</span>
+    </div>
+    <div class="choix-nombres" id="choix1">
+      <span class="chiffre" data-val="3">3</span>
+      <span class="chiffre" data-val="5">5</span>
+      <span class="chiffre" data-val="7">7</span>
+      <span class="chiffre" data-val="2">2</span>
+      <span class="chiffre" data-val="4">4</span>
+    </div>
+    <p class="reponse" id="rep1"></p>
+  </div>
+
+  <!-- ACTIVITE 2 : reconnaissance chiffres -->
+  <div class="exercice" id="ex2">
+    <h2>Activité 2 — Je reconnais les chiffres 🔢</h2>
+    <p style="font-size:15px; margin:0 0 12px;">Clique sur le chiffre <span style="color:#e75480;font-weight:700;">7</span> :</p>
+    <div class="grille-chiffres" id="grille2">
+      <span class="case-chiffre" data-val="2">2</span>
+      <span class="case-chiffre" data-val="9">9</span>
+      <span class="case-chiffre" data-val="4">4</span>
+      <span class="case-chiffre" data-val="7">7</span>
+      <span class="case-chiffre" data-val="1">1</span>
+      <span class="case-chiffre" data-val="6">6</span>
+      <span class="case-chiffre" data-val="3">3</span>
+      <span class="case-chiffre" data-val="8">8</span>
+      <span class="case-chiffre" data-val="5">5</span>
+      <span class="case-chiffre" data-val="0">0</span>
+    </div>
+    <p class="reponse" id="rep2"></p>
+  </div>
+
+  <!-- ACTIVITE 3 : additions -->
+  <div class="exercice" id="ex3">
+    <h2>Activité 3 — Je fais des additions ➕</h2>
+    <p style="font-size:15px; margin:0 0 10px;">Compte tous les objets et clique sur le bon résultat :</p>
+
+    <div class="addition">
+      <div class="groupe-objets" id="groupeA">
+        <span class="petit-objet">🍌</span>
+        <span class="petit-objet">🍌</span>
+        <span class="petit-objet">🍌</span>
+      </div>
+      <span class="signe">+</span>
+      <div class="groupe-objets" id="groupeB">
+        <span class="petit-objet">🍌</span>
+        <span class="petit-objet">🍌</span>
+      </div>
+      <div class="choix-nombres" id="choix3">
+        <span class="reponse-add" data-val="4">4</span>
+        <span class="reponse-add" data-val="5">5</span>
+        <span class="reponse-add" data-val="6">6</span>
+        <span class="reponse-add" data-val="7">7</span>
+      </div>
+    </div>
+    <p class="reponse" id="rep3"></p>
+  </div>
+
+  <!-- ACTIVITE 4 : comparaison -->
+  <div class="exercice" id="ex4">
+    <h2>Activité 4 — Je compare les nombres ⚖️</h2>
+    <p style="font-size:15px; margin:0 0 10px;">Lequel est le plus grand ? Clique sur le bon signe :</p>
+
+    <div class="comparaison">
+      <div class="bloc-nombre">
+        <span class="nombre-geant" id="nA">8</span>
+        <div class="objets-geants" id="objA"></div>
+      </div>
+      <span class="symbole" id="symCible">?</span>
+      <div class="bloc-nombre">
+        <span class="nombre-geant" id="nB">5</span>
+        <div class="objets-geants" id="objB"></div>
+      </div>
+    </div>
+
+    <div class="choix-symbole" id="choix4">
+      <span class="symbole-btn" data-val="&lt;">&lt;</span>
+      <span class="symbole-btn" data-val="=">=</span>
+      <span class="symbole-btn" data-val="&gt;">&gt;</span>
+    </div>
+    <p class="reponse" id="rep4"></p>
+    <p class="reponse-2" style="font-size:13px; color:#666; margin-top:6px;">💡 &lt; = plus petit, &gt; = plus grand, = = pareil</p>
+  </div>
+
+  <div class="bravo">
+    <h2>🌟 Bravo ! 🌟</h2>
+    <p>Tu as terminé ton exercice de maths. Tu es un(e) champion(ne) des nombres !</p>
+    <div class="etoiles">⭐ ⭐ ⭐ ⭐ ⭐</div>
+    <button class="no-print" onclick="window.print()">🖨️ Imprimer mon exercice</button>
+  </div>
+
+  <div class="footer">
+    Exercice créé pour un élève de CP (6 ans) — Auteur : Marsou50 · 🇫🇷
+  </div>
+
+</div>
+
+<script>
+  // Aide : compteur d'objets cliqués
+  function compterObjets(containerId, total) {
+    const objs = document.querySelectorAll('#' + containerId + ' .objet');
+    let compte = 0;
+    objs.forEach(o => {
+      o.addEventListener('click', () => {
+        if (!o.classList.contains('compte')) {
+          o.classList.add('compte');
+          compte++;
+        }
+      });
+    });
+    return { objs, total };
+  }
+
+  // Activité 1 : 5 pommes
+  (function(){
+    const cible = 5;
+    const infos = compterObjets('objets1', cible);
+    const ch = document.querySelectorAll('#choix1 .chiffre');
+    const rep = document.getElementById('rep1');
+    ch.forEach(c => {
+      c.addEventListener('click', () => {
+        ch.forEach(x => x.classList.remove('choisi'));
+        c.classList.add('choisi');
+        if (parseInt(c.dataset.val) === cible) {
+          rep.textContent = 'Bravo ! Il y a bien ' + cible + ' pommes. 🎉';
+          rep.style.color = '#2d6a4f';
+        } else {
+          rep.textContent = 'Presque ! Essaie encore. 🍎';
+          rep.style.color = '#e75480';
+        }
+      });
+    });
+  })();
+
+  // Activité 2 : trouver le 7
+  (function(){
+    const cases = document.querySelectorAll('#grille2 .case-chiffre');
+    const rep = document.getElementById('rep2');
+    cases.forEach(c => {
+      c.addEventListener('click', () => {
+        cases.forEach(x => x.classList.remove('choisi'));
+        c.classList.add('choisi');
+        if (c.dataset.val === '7') {
+          rep.textContent = 'C\'est ça ! Tu as trouvé le 7. 🎉';
+          rep.style.color = '#2d6a4f';
+        } else {
+          rep.textContent = 'Pas celui-là. Cherche le chiffre 7. 🔢';
+          rep.style.color = '#e75480';
+        }
+      });
+    });
+  })();
+
+  // Activité 3 : 3 + 2 = 5
+  (function(){
+    const cible = 5;
+    const reps = document.querySelectorAll('#choix3 .reponse-add');
+    const rep = document.getElementById('rep3');
+    reps.forEach(r => {
+      r.addEventListener('click', () => {
+        reps.forEach(x => x.classList.remove('choisi'));
+        r.classList.add('choisi');
+        if (parseInt(r.dataset.val) === cible) {
+          rep.textContent = 'Bravo ! 3 + 2 = 5. 🎉';
+          rep.style.color = '#2d6a4f';
+        } else {
+          rep.textContent = 'Presque ! Compte encore : 1,2,3… puis 4,5. ➕';
+          rep.style.color = '#e75480';
+        }
+      });
+    });
+  })();
+
+  // Activité 4 : 8 > 5
+  (function(){
+    const nA = 8, nB = 5;
+    const cible = '&gt;';
+    const elA = document.getElementById('nA');
+    const elB = document.getElementById('nB');
+    const objA = document.getElementById('objA');
+    const objB = document.getElementById('objB');
+    elA.textContent = nA;
+    elB.textContent = nB;
+    for (let i=0;i<nA;i++){ const s=document.createElement('span'); s.className='petit-objet'; s.textContent='🍎'; objA.appendChild(s); }
+    for (let i=0;i<nB;i++){ const s=document.createElement('span'); s.className='petit-objet'; s.textContent='🍎'; objB.appendChild(s); }
+
+    const reps = document.querySelectorAll('#choix4 .symbole-btn');
+    const rep = document.getElementById('rep4');
+    reps.forEach(r => {
+      r.addEventListener('click', () => {
+        reps.forEach(x => x.classList.remove('choisi'));
+        r.classList.add('choisi');
+        if (r.dataset.val === cible) {
+          rep.textContent = 'Bravo ! 8 est plus grand que 5. 🎉';
+          rep.style.color = '#2d6a4f';
+        } else {
+          rep.textContent = 'Pas celui-là. 8 est plus grand que 5, donc le signe est &gt;. ⚖️';
+          rep.style.color = '#e75480';
+        }
+      });
+    });
+  })();
+</script>
+
+</body>
+</html>
