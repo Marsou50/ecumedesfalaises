@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mon exercice de CP - Lecture et écriture</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Comic+Neue:wght@400;700&family=Fredoka:wght@400;600&display=swap');
+
+  :root {
+    --bg: #fdf7e3;
+    --ink: #2d3a2a;
+    --pink: #ff9aa2;
+    --blue: #9cdbff;
+    --green: #caffbf;
+    --yellow: #ffd6a5;
+    --purple: #d7bde2;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    font-family: 'Fredoka', sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+    margin: 0;
+    padding: 18px;
+    min-height: 100vh;
+  }
+
+  .page {
+    max-width: 740px;
+    margin: 0 auto;
+    background: #ffffff;
+    border: 8px dashed #ffb7b2;
+    border-radius: 24px;
+    padding: 30px 26px;
+    box-shadow: 0 12px 30px rgba(0,0,0,0.08);
+  }
+
+  @media print {
+    body { background: #fff; padding: 0; }
+    .page { border: none; box-shadow: none; max-width: 100%; padding: 20px; }
+    .no-print { display: none !important; }
+  }
+
+  header {
+    text-align: center;
+    margin-bottom: 26px;
+    padding-bottom: 18px;
+    border-bottom: 4px solid #ffb7b2;
+    position: relative;
+  }
+
+  header::after {
+    content: "✂";
+    position: absolute;
+    left: 50%;
+    bottom: -14px;
+    transform: translateX(-50%);
+    font-size: 26px;
+    color: #ff9aa2;
+    background: #fff;
+    padding: 0 10px;
+  }
+
+  h1 {
+    font-family: 'Comic Neue', cursive;
+    font-size: 34px;
+    color: #e75480;
+    margin: 0 0 6px;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    text-shadow: 1px 1px 0 #fff7ed;
+  }
+
+  .subtitle {
+    font-size: 16px;
+    color: #5a6b5a;
+    margin: 0;
+  }
+
+  .name-line {
+    margin-top: 14px;
+    font-size: 15px;
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    align-items: center;
+  }
+
+  .name-line input {
+    flex: 1;
+    max-width: 220px;
+    border: none;
+    border-bottom: 2px dashed #ff9aa2;
+    font-family: inherit;
+    font-size: 16px;
+    padding: 4px 8px;
+    outline: none;
+  }
+
+  .name-line input:focus { border-color: #e75480; }
+
+  .consigne {
+    background: var(--yellow);
+    border-left: 6px solid #fab1a0;
+    padding: 12px 16px;
+    border-radius: 10px;
+    margin: 22px 0;
+    font-size: 15px;
+    color: #6d4c41;
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .consigne .icone { font-size: 22px; line-height: 1; }
+
+  h2 {
+    font-family: 'Comic Neue', cursive;
+    font-size: 22px;
+    color: #e75480;
+    margin: 30px 0 14px;
+    padding-left: 10px;
+    border-left: 5px solid var(--blue);
+  }
+
+  .exercice {
+    margin-bottom: 30px;
+    page-break-inside: avoid;
+  }
+
+  .exercice:last-child { margin-bottom: 0; }
+
+  /* Activité 1 : voyelles */
+  .lettres {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    justify-content: center;
+  }
+
+  .lettre {
+    width: 52px;
+    height: 52px;
+    border-radius: 14px;
+    border: 2px solid #dcd7ca;
+    background: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 26px;
+    font-weight: 700;
+    color: #4a4a4a;
+    cursor: pointer;
+    user-select: none;
+    transition: all 0.15s;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+  }
+
+  .lettre.voyelle { border-color: #ff9aa2; background: #ffe5e5; color: #e75480; }
+  .lettre:hover { transform: translateY(-2px); border-color: #e75480; }
+  .lettre.choisi { outline: 3px solid #00b894; }
+
+  .reponse-1 {
+    margin-top: 14px;
+    text-align: center;
+    font-size: 14px;
+    color: #666;
+    font-style: italic;
+  }
+
+  /* Activité 2 : syllabes */
+  .syllabes {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+    gap: 12px;
+  }
+
+  .syl {
+    background: var(--green);
+    border: 2px solid #70e000;
+    border-radius: 12px;
+    padding: 14px 8px;
+    text-align: center;
+    font-size: 20px;
+    font-weight: 700;
+    color: #2d6a4f;
+    cursor: pointer;
+    transition: 0.15s;
+  }
+
+  .syl:hover { background: #59c173; color: #fff; border-color: #2d6a4f; }
+  .syl.choisi { background: #00b894; color: #fff; border-color: #00b894; }
+
+  .consigne-2 {
+    margin-top: 12px;
+    font-size: 13px;
+    color: #666;
+  }
+
+  /* Activité 3 : mots */
+  .mots {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    justify-content: center;
+  }
+
+  .mot-carrouge {
+    width: 150px;
+    background: var(--blue);
+    border: 2px solid #48cae4;
+    border-radius: 16px;
+    padding: 14px 8px;
+    text-align: center;
+    font-size: 20px;
+    font-weight: 700;
+    color: #05668d;
+    cursor: pointer;
+    transition: 0.15s;
+  }
+
+  .mot-carrouge:hover { background: #48cae4; color: #fff; border-color: #05668d; }
+  .mot-carrouge.choisi { outline: 3px solid #023e8a; }
+
+  /* Activité 4 : écriture */
+  .ligne-ecriture {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 20px;
+    page-break-inside: avoid;
+  }
+
+  .modele {
+    width: 110px;
+    font-family: 'Comic Neue', cursive;
+    font-size: 28px;
+    font-weight: 700;
+    color: #e75480;
+    text-align: center;
+    background: #ffe5e5;
+    border: 2px dashed #ff9aa2;
+    border-radius: 12px;
+    padding: 6px;
+  }
+
+  .trace {
+    flex: 1;
+    height: 52px;
+    border-bottom: 2px dashed #b2b2b2;
+    display: flex;
+    align-items: center;
+    padding-left: 10px;
+    font-family: 'Comic Neue', cursive;
+    font-size: 24px;
+    color: #888;
+  }
+
+  .trace:empty::before { content: attr(data-placeholder); color: #bbb; }
+
+  .bravo {
+    margin-top: 34px;
+    text-align: center;
+    background: linear-gradient(135deg, var(--pink), var(--purple));
+    border-radius: 20px;
+    padding: 22px;
+    color: #fff;
+    font-family: 'Comic Neue', cursive;
+  }
+
+  .bravo h2 { color: #fff; margin-top: 0; border: none; padding: 0; font-size: 26px; }
+  .bravo p { margin: 6px 0; font-size: 15px; }
+
+  .etoiles { font-size: 24px; letter-spacing: 6px; margin: 10px 0; }
+
+  .footer {
+    margin-top: 26px;
+    text-align: center;
+    font-size: 12px;
+    color: #999;
+    border-top: 1px dashed #ddd;
+    padding-top: 12px;
+  }
+
+  button {
+    margin-top: 10px;
+    padding: 10px 22px;
+    font-family: inherit;
+    font-size: 15px;
+    font-weight: 700;
+    color: #fff;
+    background: #e75480;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    box-shadow: 0 4px 10px rgba(231,84,128,0.35);
+    transition: 0.15s;
+  }
+
+  button:hover { background: #d64072; transform: translateY(-1px); }
+  button:active { transform: translateY(0); }
+</style>
+</head>
+<body>
+
+<div class="page">
+
+  <header>
+    <h1>Mon exercice de CP 🎒</h1>
+    <p class="subtitle">Français — Lecture &amp; écriture &nbsp;•&nbsp; 6 ans</p>
+    <div class="name-line">
+      <span>Prénom :</span>
+      <input type="text" placeholder="Écris ton prénom ici">
+      <span>🎨</span>
+    </div>
+  </header>
+
+  <div class="consigne">
+    <span class="icone">📝</span>
+    <span>Lis bien chaque consigne. Entoure, colorie ou écris les réponses. Quand tu as fini, demande à papa ou maman de regarder avec toi !</span>
+  </div>
+
+  <!-- ACTIVITE 1 -->
+  <div class="exercice" id="ex1">
+    <h2>Activité 1 — Je trouve les voyelles 🔤</h2>
+    <p style="font-size:15px; margin:0 0 10px;">Colorie (ou clique) sur toutes les <b>voyelles</b> : <span style="color:#e75480;font-weight:700;">a  e  i  o  u</span></p>
+    <div class="lettres" id="lettres">
+      <span class="lettre" data-val="b">b</span>
+      <span class="lettre" data-val="a">a</span>
+      <span class="lettre" data-val="t">t</span>
+      <span class="lettre" data-val="e">e</span>
+      <span class="lettre" data-val="m">m</span>
+      <span class="lettre" data-val="i">i</span>
+      <span class="lettre" data-val="p">p</span>
+      <span class="lettre" data-val="o">o</span>
+      <span class="lettre" data-val="l">l</span>
+      <span class="lettre" data-val="u">u</span>
+      <span class="lettre" data-val="s">s</span>
+      <span class="lettre" data-val="r">r</span>
+    </div>
+    <p class="reponse-1">Il y a 5 voyelles à trouver. Tu en as trouvé <span id="compteur-1" style="font-weight:700;color:#e75480;">0</span> sur 5.</p>
+  </div>
+
+  <!-- ACTIVITE 2 -->
+  <div class="exercice" id="ex2">
+    <h2>Activité 2 — Je lis les syllabes 🎵</h2>
+    <p style="font-size:15px; margin:0 0 10px;">Entoure la syllabe que tu entends au début du mot <b>"maman"</b> :</p>
+    <div class="syllabes" id="syllabes">
+      <span class="syl" data-val="ma">ma</span>
+      <span class="syl" data-val="pa">pa</span>
+      <span class="syl" data-val="ta">ta</span>
+      <span class="syl" data-val="la">la</span>
+      <span class="syl" data-val="sa">sa</span>
+      <span class="syl" data-val="ra">ra</span>
+    </div>
+    <p class="consigne-2">💡 Astuce : <b>maman</b> commence par le son <b>mmm</b>… donc la syllabe est <b>ma</b> !</p>
+  </div>
+
+  <!-- ACTIVITE 3 -->
+  <div class="exercice" id="ex3">
+    <h2>Activité 3 — Je lis des mots 📖</h2>
+    <p style="font-size:15px; margin:0 0 12px;">Clique sur les mots que tu sais lire. Dis-les à voix haute !</p>
+    <div class="mots" id="mots">
+      <span class="mot-carrouge" data-val="maman">👩‍👧 maman</span>
+      <span class="mot-carrouge" data-val="papa">👨‍👦 papa</span>
+      <span class="mot-carrouge" data-val="lire">📚 lire</span>
+      <span class="mot-carrouge" data-val="ciel">☁️ ciel</span>
+      <span class="mot-carrouge" data-val="rat">🐀 rat</span>
+      <span class="mot-carrouge" data-val="lit">🛏️ lit</span>
+    </div>
+  </div>
+
+  <!-- ACTIVITE 4 -->
+  <div class="exercice" id="ex4">
+    <h2>Activité 4 — J'écris les mots ✍️</h2>
+    <p style="font-size:15px; margin:0 0 14px;">Regarde le modèle, puis recopie le mot sur la ligne.</p>
+
+    <div class="ligne-ecriture">
+      <div class="modele">maman</div>
+      <div class="trace" data-placeholder="m _ _ _ _ _"></div>
+    </div>
+    <div class="ligne-ecriture">
+      <div class="modele">papa</div>
+      <div class="trace" data-placeholder="p _ _ _"></div>
+    </div>
+    <div class="ligne-ecriture">
+      <div class="modele">lire</div>
+      <div class="trace" data-placeholder="l _ _ _"></div>
+    </div>
+    <div class="ligne-ecriture">
+      <div class="modele">rat</div>
+      <div class="trace" data-placeholder="r _ _"></div>
+    </div>
+  </div>
+
+  <div class="bravo">
+    <h2>🌟 Bravo ! 🌟</h2>
+    <p>Tu as terminé ton exercice de CP. Continue comme ça, tu es un(e) champion(ne) !</p>
+    <div class="etoiles">⭐ ⭐ ⭐ ⭐ ⭐</div>
+    <button class="no-print" onclick="window.print()">🖨️ Imprimer mon exercice</button>
+  </div>
+
+  <div class="footer">
+    Exercice créé pour une élève de CP (6 ans) — Auteur : Marsou50 · 🇫🇷
+  </div>
+
+</div>
+
+<script>
+  // Activité 1 : voyelles
+  (function(){
+    const voyelles = new Set(['a','e','i','o','u']);
+    const els = document.querySelectorAll('#lettres .lettre');
+    let trouve = 0;
+    els.forEach(el=>{
+      el.addEventListener('click',()=>{
+        const v = el.dataset.val;
+        if (voyelles.has(v)) {
+          if (!el.classList.contains('choisi')) {
+            el.classList.add('choisi');
+            trouve++;
+          }
+        } else {
+          el.classList.add('secouer');
+          setTimeout(()=>el.classList.remove('secouer'), 400);
+        }
+        document.getElementById('compteur-1').textContent = trouve;
+        if (trouve === 5) {
+          setTimeout(()=>alert('Bravo ! Tu as trouvé toutes les voyelles : a, e, i, o, u 🎉'), 150);
+        }
+      });
+    });
+  })();
+
+  // Activité 2 : syllabes
+  (function(){
+    const els = document.querySelectorAll('#syllabes .syl');
+    els.forEach(el=>{
+      el.addEventListener('click',()=>{
+        els.forEach(e=>e.classList.remove('choisi'));
+        el.classList.add('choisi');
+        if (el.dataset.val === 'ma') {
+          setTimeout(()=>alert('C\'est ça ! Maman commence par la syllabe "ma". 🎉'), 150);
+        } else {
+          setTimeout(()=>alert('Presque ! Écoute bien : mmm-a-man… la bonne syllabe est "ma".'), 150);
+        }
+      });
+    });
+  })();
+
+  // Activité 3 : mots
+  (function(){
+    const els = document.querySelectorAll('#mots .mot-carrouge');
+    els.forEach(el=>{
+      el.addEventListener('click',()=>el.classList.toggle('choisi'));
+    });
+  })();
+
+  // Petite animation de secouement
+  const style = document.createElement('style');
+  style.textContent = `
+    @keyframes secouer {
+      0%,100%{transform:translateX(0);}
+      20%,60%{transform:translateX(-6px);}
+      40%,80%{transform:translateX(6px);}
+    }
+    .secouer{animation:secouer 0.4s ease;}
+  `;
+  document.head.appendChild(style);
+</script>
+
+</body>
+</html>
